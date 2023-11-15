@@ -41,8 +41,13 @@ jobs:
 
       - name: Commit and push latest speech timestamp
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add last_speech_timestamp.txt
-          git commit -m "Auto-update of last_speech_timestamp.txt"
-          git push
+          git diff --name-only --exit-code origin/main -- last_speech_timestamp.txt
+          if [ $? -eq 1 ]; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add last_speech_timestamp.txt
+            git commit -m "Auto-update of last_speech_timestamp.txt"
+            git push
+          else
+            echo "No changes in last_speech_timestamp.txt"
+          fi
