@@ -30,8 +30,8 @@ jobs:
       - name: Activate Python environment and login to Huggingface
         run: |
           poetry install
-          ls -la
-          source $VENV
+          env
+          source $(poetry env info --path)/bin/activate
           huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
 
       - name: Fetch and update speeches
