@@ -1,0 +1,37 @@
+name: Fetch latest speeches from president.gov.ua and push them to the HuggingFace
+
+on:
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  run-python-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Activate Python environment and login to Huggingface
+        run: |
+          source $HOME/.poetry/env
+          poetry install
+          huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
+
+      - name: Fetch and update speeches
+        run: |
+          python ./main.py
