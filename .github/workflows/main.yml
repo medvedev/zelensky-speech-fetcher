@@ -29,10 +29,11 @@ jobs:
 
       - name: Activate Python environment and login to Huggingface
         run: |
-          source $(poetry env info --path)/bin/activate
           poetry install
+          source $(poetry env info --path)/bin/activate
           huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
 
       - name: Fetch and update speeches
         run: |
+          source $(poetry env info --path)/bin/activate
           python ./main.py
