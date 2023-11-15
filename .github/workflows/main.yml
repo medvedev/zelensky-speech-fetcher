@@ -37,3 +37,11 @@ jobs:
         run: |
           source $(poetry env info --path)/bin/activate
           python ./main.py
+
+      - name: Commit and push latest speech timestamp
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add last_speech_timestamp.txt
+          git commit -m "Auto-update of last_speech_timestamp.txt"
+          git push
