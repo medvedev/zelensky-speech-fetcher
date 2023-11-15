@@ -29,7 +29,7 @@ jobs:
 
       - name: Activate Python environment and login to Huggingface
         run: |
-          source $HOME/.poetry/env
+          source $VENV
           poetry install
           huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
 
