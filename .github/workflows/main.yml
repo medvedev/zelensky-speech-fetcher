@@ -23,7 +23,7 @@ jobs:
           cache: 'poetry'
 
       - name: Set poetry env variable
-        run: echo "$(poetry env info --path)" >> $POETRY_ENV_PATH
+        run: echo "POETRY_ENV_PATH=$(poetry env info --path)" >> $GITHUB_ENV
 
       - name: Cache dependencies
         uses: actions/cache@v3
