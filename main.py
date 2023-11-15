@@ -76,11 +76,13 @@ def run():
     print(f"Processing latest page")
     latest_speech_date, new_speeches = extract_data(f"https://www.president.gov.ua/news/speeches")
     if len(new_speeches) != 0:
-        print(f'Got {len(new_speeches)} new speeches. Latest timestamp: {latest_speech_date}')
+        latest_timestamp_epoch = latest_speech_date.strftime('%s')
+        print(f'Got {len(new_speeches)} new speeches.'
+              f'Latest timestamp: {latest_speech_date} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
         if latest_speech_date is not None:
             with open(epoch_filename, 'w') as file:
-                file.write(latest_speech_date.strftime('%s'))
+                file.write(latest_timestamp_epoch)
     else:
         print('No new speeches found')
 
