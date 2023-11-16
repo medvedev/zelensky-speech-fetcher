@@ -1,6 +1,7 @@
 import traceback
 
 import requests
+import requests_random_user_agent
 import re
 from lxml import html
 
@@ -8,8 +9,7 @@ from date_parse import parse
 from model_updater import update_dataset
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0',
-    'Accept': 'text/html'
+    'Accept': 'application/json, text/html'
 }
 
 epoch_filename = 'last_speech_timestamp.txt'
@@ -69,7 +69,6 @@ def extract_data(url):
                 pass
     else:
         print(f"Failed to fetch the URL: {url}. Status code: {response.status_code}")
-        print(response.text)
     return speech_date, speeches
 
 
