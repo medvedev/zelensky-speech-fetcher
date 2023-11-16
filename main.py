@@ -68,7 +68,8 @@ def extract_data(url):
                 traceback.print_exc()
                 pass
     else:
-        print(f"Failed to fetch the URL: {url}")
+        print(f"Failed to fetch the URL: {url}. Status code: {response.status_code}")
+        print(response.text)
     return speech_date, speeches
 
 
