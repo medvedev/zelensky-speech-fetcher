@@ -1,9 +1,11 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+print("Starting")
 chromium_options = Options()
 chromium_options.binary_location = "/usr/bin/chromium-browser"
-chromium_options.add_argument('--headless')
+for arg in ['--headless', '--remote-debugging-port=9222']:
+    chromium_options.add_argument(arg)
 driver = None
 
 try:
