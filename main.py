@@ -1,7 +1,6 @@
 import traceback
 
 import requests
-import requests_random_user_agent
 import re
 from lxml import html
 
@@ -9,6 +8,7 @@ from date_parse import parse
 from model_updater import update_dataset
 
 headers = {
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/120.0',
     'Accept': 'application/json, text/html'
 }
 

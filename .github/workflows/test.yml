@@ -1,0 +1,29 @@
+name: Selenium test
+
+on:
+    workflow_dispatch:
+
+jobs:
+  run-selenium:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install chromium-browser
+        run: sudo apt-get install -y chromium-browser
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10.8'
+          cache: 'poetry'
+
+      - name: Test script
+        run: |
+          poetry install --no-root
+          source $(poetry env info --path)/bin/activate
+          python selenium_run.py
