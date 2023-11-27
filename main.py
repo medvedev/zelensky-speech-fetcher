@@ -29,7 +29,6 @@ def extract_data(url):
     try:
         driver.get(url)
         topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/div[@class="item_stat cat_stat"]')
-        print(driver.title)
 
         elements_on_page = []
         for i, element in enumerate(topics_list):

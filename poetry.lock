@@ -325,17 +325,6 @@ files = [
 ]
 
 [[package]]
-name = "cssselect"
-version = "1.2.0"
-description = "cssselect parses CSS3 Selectors and translates them to XPath 1.0"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "cssselect-1.2.0-py2.py3-none-any.whl", hash = "sha256:da1885f0c10b60c03ed5eccbb6b68d6eff248d91976fcde348f395d54c9fd35e"},
-    {file = "cssselect-1.2.0.tar.gz", hash = "sha256:666b19839cfaddb9ce9d36bfe4c969132c647b92fc9088c4e23f786b30f1b3dc"},
-]
-
-[[package]]
 name = "datasets"
 version = "2.15.0"
 description = "HuggingFace community-driven open-source library of datasets"
@@ -1406,4 +1395,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10.12"
-content-hash = "280d72bb28463a241c7a9435da154c4c7aa63c3327dbca06acae019e4a4eaaad"
+content-hash = "03a092d3c1bcd99d8917cdbfc3bed80843b664511dee4a80630306f5379f02dd"
