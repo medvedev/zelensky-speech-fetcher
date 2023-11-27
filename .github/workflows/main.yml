@@ -1,8 +1,8 @@
 name: Fetch latest speeches from president.gov.ua and push them to the HuggingFace
 
 on:
-  # schedule:
-  #   - cron:  '0 0 * * *'
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:

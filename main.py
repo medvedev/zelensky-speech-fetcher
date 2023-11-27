@@ -1,16 +1,11 @@
 import traceback
 
-import requests
 import re
-from lxml import html
+from selenium.webdriver.common.by import By
 
 from date_parse import parse
 from model_updater import update_dataset
-
-headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/120.0',
-    'Accept': 'application/json, text/html'
-}
+from selenium_driver import create_driver
 
 epoch_filename = 'last_speech_timestamp.txt'
 
@@ -22,59 +17,58 @@ def is_after_shaved_timestamp(date):
     return speech_epoch > saved_epoch
 
 
-def get_full_text(speech_url):
-    response = requests.get(speech_url, headers=headers)
-    if response.status_code == 200:
-        parsed_html = html.fromstring(response.text)
-        article_content = parsed_html.xpath('//div[@class="article_content"]')[0].text_content()
-        return re.sub('\s+', ' ', article_content).strip()
-    else:
-        print(f"Error reading speech: {speech_url}")
-        traceback.print_exc()
-        return None
+def get_full_text(driver, speech_url):
+    driver.get(speech_url)
+    article_content = driver.find_element(By.XPATH, '//div[@class="article_content"]').text
+    return re.sub('\s+', ' ', article_content).strip()
 
 
 def extract_data(url):
-    response = requests.get(url, headers=headers)
+    driver = create_driver()
     speeches = []
-    speech_date = None
-    prev_speech_date = None
-    if response.status_code == 200:
-        parsed_html = html.fromstring(response.text)
+    try:
+        driver.get(url)
+        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/div[@class="item_stat cat_stat"]')
+        print(driver.title)
 
-        topics_list = parsed_html.xpath('//div[@class="cat_list"]/div[@class="item_stat cat_stat"]')
-
+        elements_on_page = []
         for i, element in enumerate(topics_list):
+            article_href_element = element.find_element(By.XPATH, "//h3/a")
+            date_element = element.find_element(By.CSS_SELECTOR, "p.date")
+            elements_on_page.append({'href': article_href_element.get_attribute('href'),
+                                     'topic': article_href_element.text,
+                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
+
+        print(f"Parsed successfully: {url}")
+
+        for i, element in enumerate(elements_on_page):
             print(f"  speech {i} ... ", end='')
-            link = element.xpath('.//h3/a/@href')[0]
-            topic = element.xpath('.//h3/a/text()')[0]
             try:
-                date_text = element.cssselect("p.date")[0].text_content()
-                speech_date = parse(re.sub('\s+', ' ', date_text).strip())
-                if is_after_shaved_timestamp(speech_date):
-                    full_text = get_full_text(link)
+                if is_after_shaved_timestamp(element.get('date')):
+                    full_text = get_full_text(driver, element.get('href'))
                     speeches.append({
-                        'date': speech_date,
-                        'link': link,
-                        'topic': topic,
+                        'date': element.get('date'),
+                        'link': element.get('href'),
+                        'topic': element.get('topic'),
                         'full_text': full_text})
-                    prev_speech_date = speech_date
                     print("Done")
                 else:
                     print("\nNo more new speeches")
-                    return prev_speech_date, speeches
+                    break
             except:
-                print(f"\nError reading speeches page {i} from URL {url}")
+                print(f"\nError reading speeches from URL {url}")
                 traceback.print_exc()
                 pass
-    else:
-        print(f"Failed to fetch the URL: {url}. Status code: {response.status_code}")
-    return speech_date, speeches
+
+        return elements_on_page[0].get('date'), speeches
+    finally:
+        if driver is not None:
+            driver.quit()
 
 
 def run():
     print(f"Processing latest page")
-    latest_speech_date, new_speeches = extract_data(f"https://www.president.gov.ua/news/speeches")
+    latest_speech_date, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
     if len(new_speeches) != 0:
         latest_timestamp_epoch = latest_speech_date.strftime('%s')
         print(f'Got {len(new_speeches)} new speeches.'
