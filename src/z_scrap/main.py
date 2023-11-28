@@ -10,8 +10,7 @@ from selenium_driver import create_driver
 epoch_filename = 'last_speech_timestamp.txt'
 
 
-def is_after_shaved_timestamp(date):
-    speech_epoch = int(date.strftime('%s'))
+def is_after_saved_timestamp(speech_epoch):
     with open(epoch_filename) as f:
         saved_epoch = int(f.readline())
     return speech_epoch > saved_epoch
@@ -43,11 +42,13 @@ def extract_data(url):
         for i, element in enumerate(elements_on_page):
             print(f"  speech {i} ... ", end='')
             try:
-                if is_after_shaved_timestamp(element.get('date')):
-                    full_text = get_full_text(driver, element.get('href'))
+                speech_date = element.get('date')
+                if is_after_saved_timestamp(speech_date):
+                    speech_href = element.get('href')
+                    full_text = get_full_text(driver, speech_href)
                     speeches.append({
-                        'date': element.get('date'),
-                        'link': element.get('href'),
+                        'date': speech_date,
+                        'link': speech_href,
                         'topic': element.get('topic'),
                         'full_text': full_text})
                     print("Done")
@@ -67,15 +68,14 @@ def extract_data(url):
 
 def run():
     print(f"Processing latest page")
-    latest_speech_date, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
+    latest_timestamp_epoch, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
     if len(new_speeches) != 0:
-        latest_timestamp_epoch = latest_speech_date.strftime('%s')
         print(f'Got {len(new_speeches)} new speeches.'
-              f'Latest timestamp: {latest_speech_date} ({latest_timestamp_epoch})')
+              f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
-        if latest_speech_date is not None:
+        if latest_timestamp_epoch is not None:
             with open(epoch_filename, 'w') as file:
-                file.write(latest_timestamp_epoch)
+                file.write(str(latest_timestamp_epoch))
     else:
         print('No new speeches found')
 

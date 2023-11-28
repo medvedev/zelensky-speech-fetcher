@@ -19,15 +19,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10.8'
+          python-version: '3.10.12'
           cache: 'poetry'
 
       - name: Fetch and update speeches
         run: |
           poetry install --no-root
           source $(poetry env info --path)/bin/activate
-          huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
-          python ./main.py
+          huggingface-cli login --token ${{ secrets.HF_TOKEN }}
+          python ./src/z_scrap/main.py
 
       - name: Commit and push latest speech timestamp
         run: |

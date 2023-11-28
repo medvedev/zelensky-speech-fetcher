@@ -1,5 +1,4 @@
-import datetime
-import locale
+from datetime import datetime
 
 # Define the Ukrainian month names and their English equivalents
 ukrainian_months = {
@@ -28,4 +27,4 @@ def parse(ukrainian_date_string):
 
     # Define the format for parsing
     date_format = "%d %B %Y року - %H:%M"
-    return datetime.datetime.strptime(ukrainian_date_string, date_format)
+    return int(datetime.strptime(ukrainian_date_string, date_format).timestamp())
