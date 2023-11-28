@@ -2,13 +2,27 @@ from datasets import load_dataset, Dataset
 
 REPO_ID = 'slava-medvedev/zelensky-speeches'
 
-ds = load_dataset(REPO_ID, split="train").to_pandas()
-duplicates = ds[ds.duplicated(subset='date', keep=False)]
+ds = load_dataset(REPO_ID, split='train').to_pandas()
+ds_modified = False
 
-if not duplicates.empty:
-    ds.drop_duplicates(subset='date', keep='first', inplace = True)
+
+# Remove duplicates:
+# duplicates = ds[ds.duplicated(subset='date', keep=False)]
+# if not duplicates.empty:
+#     ds.drop_duplicates(subset='date', keep='first', inplace = True)
+#     print("Duplicates removed and dataset saved.")
+#     ds_modified = True
+# else:
+#     print("No duplicates found in.")
+
+# Remove row by index:
+# rus_speech_url = 'https://www.president.gov.ua/news/prezident-ukrainy-vladimir-zelenskij-obratilsya-k-grazhdanam-73217'
+# ds = ds.drop(ds[ds['link'] == rus_speech_url].index)
+# ds_modified = True
+
+
+if ds_modified:
+    ds = ds.drop(columns=['__index_level_0__'])
     ds = Dataset.from_pandas(ds)
     ds.push_to_hub(REPO_ID)
-    print("Duplicates removed and dataset saved.")
-else:
-    print("No duplicates found in.")
+    print('Pushed successfully')
