@@ -75,7 +75,7 @@ def run():
         update_dataset(new_speeches)
         if latest_timestamp_epoch is not None:
             with open(epoch_filename, 'w') as file:
-                file.write(latest_timestamp_epoch)
+                file.write(str(latest_timestamp_epoch))
     else:
         print('No new speeches found')
 
