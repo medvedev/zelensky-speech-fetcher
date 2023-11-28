@@ -1,6 +1,7 @@
 import datetime
 import unittest
-from date_parse import parse
+
+from src.z_scrap.date_parse import parse
 
 
 class MyTestCase(unittest.TestCase):

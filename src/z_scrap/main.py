@@ -10,8 +10,7 @@ from selenium_driver import create_driver
 epoch_filename = 'last_speech_timestamp.txt'
 
 
-def is_after_shaved_timestamp(date):
-    speech_epoch = int(date.strftime('%s'))
+def is_after_saved_timestamp(speech_epoch):
     with open(epoch_filename) as f:
         saved_epoch = int(f.readline())
     return speech_epoch > saved_epoch
@@ -43,11 +42,13 @@ def extract_data(url):
         for i, element in enumerate(elements_on_page):
             print(f"  speech {i} ... ", end='')
             try:
-                if is_after_shaved_timestamp(element.get('date')):
-                    full_text = get_full_text(driver, element.get('href'))
+                speech_date = element.get('date')
+                if is_after_saved_timestamp(speech_date):
+                    speech_href = element.get('href')
+                    full_text = get_full_text(driver, speech_href)
                     speeches.append({
-                        'date': element.get('date'),
-                        'link': element.get('href'),
+                        'date': speech_date,
+                        'link': speech_href,
                         'topic': element.get('topic'),
                         'full_text': full_text})
                     print("Done")
