@@ -68,13 +68,12 @@ def extract_data(url):
 
 def run():
     print(f"Processing latest page")
-    latest_speech_date, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
+    latest_timestamp_epoch, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
     if len(new_speeches) != 0:
-        latest_timestamp_epoch = latest_speech_date.strftime('%s')
         print(f'Got {len(new_speeches)} new speeches.'
-              f'Latest timestamp: {latest_speech_date} ({latest_timestamp_epoch})')
+              f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
-        if latest_speech_date is not None:
+        if latest_timestamp_epoch is not None:
             with open(epoch_filename, 'w') as file:
                 file.write(latest_timestamp_epoch)
     else:
