@@ -1,4 +1,6 @@
+import json
 from datetime import datetime
+import pandas as pd
 
 from datasets import load_dataset, Dataset
 
@@ -16,7 +18,20 @@ REPO_ID = 'slava-medvedev/zelensky-speeches'
 dataset = load_dataset(REPO_ID, split='train', cache_dir='./.cache')
 ds = dataset.to_pandas()
 # ds['date'] = ds['date'].apply(convert_date)
-ds_modified = False
+# ds_modified = False
+
+new_data = []
+with open('speeches_en.jsonl', 'r', encoding='utf-8') as file:
+    for line in file:
+        new_data.append(json.loads(line))
+
+# Convert the list of dictionaries to a Hugging Face dataset
+new_dataset = Dataset.from_list(new_data)
+new_ds = new_dataset.to_pandas()
+new_ds['lang'] = 'en'
+
+ds = pd.concat([ds, new_ds])
+ds_modified = True
 
 # Remove duplicates:
 # duplicates = ds[ds.duplicated(subset='date', keep=False)]
@@ -34,12 +49,12 @@ ds_modified = False
 # ds_modified = True
 
 # Add lang column
-ds['lang'] = 'uk'
-ds_modified = True
+# ds['lang'] = 'uk'
+# ds_modified = True
 
 
 if ds_modified:
-    ds = ds.drop(columns=['__index_level_0__'])
+    # ds = ds.drop(columns=['__index_level_0__'])
     ds = Dataset.from_pandas(ds)
     ds.push_to_hub(REPO_ID)
     print('Pushed successfully')

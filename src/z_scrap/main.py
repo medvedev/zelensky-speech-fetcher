@@ -44,7 +44,7 @@ def extract_data(url, language="uk"):
             print(f"  speech {i} ... ", end='')
             try:
                 speech_date = element.get('date')
-                if is_after_saved_timestamp(speech_date):
+                if is_after_saved_timestamp(speech_date, language=language):
                     speech_href = element.get('href')
                     full_text = get_full_text(driver, speech_href)
                     speeches.append({
@@ -68,19 +68,26 @@ def extract_data(url, language="uk"):
             driver.quit()
 
 
-def run():
-    print(f"Processing latest page")
-    latest_timestamp_epoch, new_speeches = extract_data("https://www.president.gov.ua/news/speeches")
+def extract_and_save(language):
+    print(f"Processing latest page for language {language}")
+    if language == 'uk':
+        url_suffix = "/"
+    else:
+        url_suffix = f"/{language}/"
+    latest_timestamp_epoch, new_speeches = extract_data(
+        f"https://www.president.gov.ua{url_suffix}news/speeches",
+        language=language)
     if len(new_speeches) != 0:
         print(f'Got {len(new_speeches)} new speeches.'
               f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
         if latest_timestamp_epoch is not None:
-            with open(epoch_filename('uk'), 'w') as file:
+            with open(epoch_filename(language), 'w') as file:
                 file.write(str(latest_timestamp_epoch))
     else:
-        print('No new speeches found')
+        print(f"No new speeches found for language {language}")
 
 
 if __name__ == '__main__':
-    run()
+    extract_and_save('uk')
+    extract_and_save('en')
