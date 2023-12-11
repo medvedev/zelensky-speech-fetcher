@@ -13,23 +13,28 @@ def convert_date(date_str):
 
 REPO_ID = 'slava-medvedev/zelensky-speeches'
 
-dataset = load_dataset(REPO_ID, split='train')
+dataset = load_dataset(REPO_ID, split='train', cache_dir='./.cache')
 ds = dataset.to_pandas()
 # ds['date'] = ds['date'].apply(convert_date)
 ds_modified = False
 
 # Remove duplicates:
 # duplicates = ds[ds.duplicated(subset='date', keep=False)]
-# if not duplicates.empty:
+# if duplicates.empty:
+#     print("No duplicates found in.")
+# else:
 #     ds.drop_duplicates(subset='date', keep='first', inplace = True)
 #     print("Duplicates removed and dataset saved.")
 #     ds_modified = True
-# else:
-#     print("No duplicates found in.")
+
 
 # Remove row by index:
-rus_speech_url = 'https://www.president.gov.ua/news/prezident-ukrainy-vladimir-zelenskij-obratilsya-k-grazhdanam-73217'
-ds = ds.drop(ds[ds['link'] == rus_speech_url].index)
+# rus_speech_url = 'https://www.president.gov.ua/news/prezident-ukrainy-vladimir-zelenskij-obratilsya-k-grazhdanam-73217'
+# ds = ds.drop(ds[ds['link'] == rus_speech_url].index)
+# ds_modified = True
+
+# Add lang column
+ds['lang'] = 'uk'
 ds_modified = True
 
 

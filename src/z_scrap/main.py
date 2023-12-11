@@ -7,11 +7,13 @@ from date_parse import parse
 from model_updater import update_dataset
 from selenium_driver import create_driver
 
-epoch_filename = 'last_speech_timestamp.txt'
+
+def epoch_filename(language):
+    return f"last_speech_timestamp_{language}.txt"
 
 
-def is_after_saved_timestamp(speech_epoch):
-    with open(epoch_filename) as f:
+def is_after_saved_timestamp(speech_epoch, language):
+    with open(epoch_filename(language)) as f:
         saved_epoch = int(f.readline())
     return speech_epoch > saved_epoch
 
@@ -22,20 +24,20 @@ def get_full_text(driver, speech_url):
     return re.sub('\s+', ' ', article_content).strip()
 
 
-def extract_data(url):
+def extract_data(url, language="ua"):
     driver = create_driver()
     speeches = []
     try:
         driver.get(url)
-        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/div[@class="item_stat cat_stat"]')
+        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/div[@class="item_stat cat_stat"]//h3/a')
 
         elements_on_page = []
         for i, element in enumerate(topics_list):
-            article_href_element = element.find_element(By.XPATH, "//h3/a")
-            date_element = element.find_element(By.CSS_SELECTOR, "p.date")
-            elements_on_page.append({'href': article_href_element.get_attribute('href'),
-                                     'topic': article_href_element.text,
-                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
+            date_element = element.find_element(By.XPATH, "../../p")
+            elements_on_page.append({'href': element.get_attribute('href'),
+                                     'topic': element.text,
+                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip()),
+                                     'lang': language})
 
         print(f"Parsed successfully: {url}")
 
@@ -74,7 +76,7 @@ def run():
               f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
         if latest_timestamp_epoch is not None:
-            with open(epoch_filename, 'w') as file:
+            with open(epoch_filename('ua'), 'w') as file:
                 file.write(str(latest_timestamp_epoch))
     else:
         print('No new speeches found')

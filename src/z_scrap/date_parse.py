@@ -17,14 +17,17 @@ ukrainian_months = {
 }
 
 
-def parse(ukrainian_date_string):
+def to_timestamp(date_string, format_str):
+    return int(datetime.strptime(date_string, format_str).timestamp())
+
+
+def parse(date_string):
     # Replace Ukrainian month names with English equivalents
     for ukr_month, eng_month in ukrainian_months.items():
-        ukrainian_date_string = ukrainian_date_string.replace(ukr_month, eng_month)
+        new_date_string = date_string.replace(ukr_month, eng_month)
+        if new_date_string != date_string:
+            date_string = new_date_string
+            return to_timestamp(date_string, "%d %B %Y року - %H:%M")
 
-    # Set the locale to Ukrainian
-    # locale.setlocale(locale.LC_TIME, 'uk_UA.UTF-8')
+    return to_timestamp(date_string, '%d %B %Y - %H:%M')
 
-    # Define the format for parsing
-    date_format = "%d %B %Y року - %H:%M"
-    return int(datetime.strptime(ukrainian_date_string, date_format).timestamp())
