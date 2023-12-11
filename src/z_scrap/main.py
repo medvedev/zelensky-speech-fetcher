@@ -12,7 +12,7 @@ def epoch_filename(language):
     return f"last_speech_timestamp_{language}.txt"
 
 
-def is_after_saved_timestamp(speech_epoch, language):
+def is_after_saved_timestamp(speech_epoch, language="ua"):
     with open(epoch_filename(language)) as f:
         saved_epoch = int(f.readline())
     return speech_epoch > saved_epoch
