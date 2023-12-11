@@ -58,8 +58,8 @@ def extract_data(url, language="ua"):
                     print("\nNo more new speeches")
                     break
             except:
-                print(f"\nError reading speeches from URL {url}")
                 traceback.print_exc()
+                print(f"\nError reading speeches from URL {url}")
                 pass
 
         return elements_on_page[0].get('date'), speeches
