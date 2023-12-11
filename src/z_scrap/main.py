@@ -12,7 +12,7 @@ def epoch_filename(language):
     return f"last_speech_timestamp_{language}.txt"
 
 
-def is_after_saved_timestamp(speech_epoch, language="ua"):
+def is_after_saved_timestamp(speech_epoch, language="uk"):
     with open(epoch_filename(language)) as f:
         saved_epoch = int(f.readline())
     return speech_epoch > saved_epoch
@@ -24,7 +24,7 @@ def get_full_text(driver, speech_url):
     return re.sub('\s+', ' ', article_content).strip()
 
 
-def extract_data(url, language="ua"):
+def extract_data(url, language="uk"):
     driver = create_driver()
     speeches = []
     try:
@@ -36,8 +36,7 @@ def extract_data(url, language="ua"):
             date_element = element.find_element(By.XPATH, "../../p")
             elements_on_page.append({'href': element.get_attribute('href'),
                                      'topic': element.text,
-                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip()),
-                                     'lang': language})
+                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
 
         print(f"Parsed successfully: {url}")
 
@@ -52,7 +51,8 @@ def extract_data(url, language="ua"):
                         'date': speech_date,
                         'link': speech_href,
                         'topic': element.get('topic'),
-                        'full_text': full_text})
+                        'full_text': full_text,
+                        'lang': language})
                     print("Done")
                 else:
                     print("\nNo more new speeches")
@@ -76,7 +76,7 @@ def run():
               f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
         update_dataset(new_speeches)
         if latest_timestamp_epoch is not None:
-            with open(epoch_filename('ua'), 'w') as file:
+            with open(epoch_filename('uk'), 'w') as file:
                 file.write(str(latest_timestamp_epoch))
     else:
         print('No new speeches found')
