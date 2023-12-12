@@ -2,7 +2,7 @@ name: Fetch latest speeches from president.gov.ua and push them to the HuggingFa
 
 on:
   schedule:
-    - cron: '23 20 * * *'
+    - cron: '20 23 * * *'
   workflow_dispatch:
 
 jobs:
