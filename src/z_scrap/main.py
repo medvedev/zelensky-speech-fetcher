@@ -24,7 +24,7 @@ def get_full_text(driver, speech_url):
     return re.sub('\s+', ' ', article_content).strip()
 
 
-def extract_data(url, language="uk"):
+def extract_data(url, language="uk", force=False):
     driver = create_driver()
     speeches = []
     try:
@@ -44,7 +44,7 @@ def extract_data(url, language="uk"):
             print(f"  speech {i} ... ", end='')
             try:
                 speech_date = element.get('date')
-                if is_after_saved_timestamp(speech_date, language=language):
+                if force or is_after_saved_timestamp(speech_date, language=language):
                     speech_href = element.get('href')
                     full_text = get_full_text(driver, speech_href)
                     speeches.append({

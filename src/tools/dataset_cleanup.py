@@ -20,27 +20,29 @@ ds = dataset.to_pandas()
 # ds['date'] = ds['date'].apply(convert_date)
 # ds_modified = False
 
-# new_data = []
-# with open('speeches_en.jsonl', 'r', encoding='utf-8') as file:
-#     for line in file:
-#         new_data.append(json.loads(line))
+for language in ['en', 'uk']:
+    new_data = []
+    with open(f'speeches_{language}.jsonl', 'r', encoding='utf-8') as file:
+        for line in file:
+            new_data.append(json.loads(line))
 
-# Convert the list of dictionaries to a Hugging Face dataset
-# new_dataset = Dataset.from_list(new_data)
-# new_ds = new_dataset.to_pandas()
-# new_ds['lang'] = 'en'
-#
-# ds = pd.concat([ds, new_ds])
+    # Convert the list of dictionaries to a Hugging Face dataset
+    new_dataset = Dataset.from_list(new_data)
+    new_ds = new_dataset.to_pandas()
+    new_ds['lang'] = 'language'
+
+    ds = pd.concat([ds, new_ds])
+
 ds_modified = True
 
 # Remove duplicates:
-# duplicates = ds[ds.duplicated(subset='date', keep=False)]
-# if duplicates.empty:
-#     print("No duplicates found in.")
-# else:
-#     ds.drop_duplicates(subset='date', keep='first', inplace = True)
-#     print("Duplicates removed and dataset saved.")
-#     ds_modified = True
+duplicates = ds[ds.duplicated(subset='date', keep=False)]
+if duplicates.empty:
+    print("No duplicates found in.")
+else:
+    ds.drop_duplicates(subset=['date', 'lang'], keep='first', inplace = True)
+    print("Duplicates removed and dataset saved.")
+    ds_modified = True
 
 
 # Remove row by index:
@@ -54,7 +56,7 @@ ds_modified = True
 
 
 if ds_modified:
-    ds = ds.drop(columns=['__index_level_0__'])
+    # ds = ds.drop(columns=['__index_level_0__'])
     ds = Dataset.from_pandas(ds)
     ds.push_to_hub(REPO_ID)
     print('Pushed successfully')
