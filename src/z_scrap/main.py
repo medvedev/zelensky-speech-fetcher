@@ -68,26 +68,31 @@ def extract_data(url, language="uk"):
             driver.quit()
 
 
-def extract_and_save(language):
-    print(f"Processing latest page for language {language}")
-    if language == 'uk':
-        url_suffix = "/"
-    else:
-        url_suffix = f"/{language}/"
-    latest_timestamp_epoch, new_speeches = extract_data(
-        f"https://www.president.gov.ua{url_suffix}news/speeches",
-        language=language)
+def main():
+    languages = ['en', 'uk']
+    timestamps = {}
+    new_speeches = []
+    for language in languages:
+        print(f"Processing latest page for language {language}")
+        if language == 'uk':
+            url_suffix = "/"
+        else:
+            url_suffix = f"/{language}/"
+        timestamps[language], new_speeches_lang = extract_data(
+            f"https://www.president.gov.ua{url_suffix}news/speeches",
+            language=language)
+        new_speeches.extend(new_speeches_lang)
     if len(new_speeches) != 0:
-        print(f'Got {len(new_speeches)} new speeches.'
-              f'Latest timestamp: {latest_timestamp_epoch} ({latest_timestamp_epoch})')
+        print(f'Got {len(new_speeches)} new speeches. '
+              f'Latest timestamps: {timestamps}')
         update_dataset(new_speeches)
-        if latest_timestamp_epoch is not None:
-            with open(epoch_filename(language), 'w') as file:
-                file.write(str(latest_timestamp_epoch))
+        for language in languages:
+            if timestamps[language] is not None:
+                with open(epoch_filename(language), 'w') as file:
+                    file.write(str(timestamps[language]))
     else:
-        print(f"No new speeches found for language {language}")
+        print("No new speeches found")
 
 
 if __name__ == '__main__':
-    extract_and_save('uk')
-    extract_and_save('en')
+    main()
