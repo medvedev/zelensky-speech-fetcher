@@ -20,6 +20,7 @@ ds = dataset.to_pandas()
 # ds['date'] = ds['date'].apply(convert_date)
 # ds_modified = False
 #
+
 # for language in ['en', 'uk']:
 #     new_data = []
 #     with open(f'speeches_{language}.jsonl', 'r', encoding='utf-8') as file:
@@ -29,7 +30,7 @@ ds = dataset.to_pandas()
 #     # Convert the list of dictionaries to a Hugging Face dataset
 #     new_dataset = Dataset.from_list(new_data)
 #     new_ds = new_dataset.to_pandas()
-#     new_ds['lang'] = 'language'
+#     new_ds['lang'] = language
 #
 #     ds = pd.concat([ds, new_ds])
 #
@@ -50,12 +51,11 @@ ds = dataset.to_pandas()
 # ds = ds.drop(ds[ds['link'] == rus_speech_url].index)
 # ds_modified = True
 
-# Add lang column
-# ds['lang'] = 'uk'
 ds_modified = True
 
 
 if ds_modified:
+    ds = ds.drop(columns=['__index_level_0__'])
     ds = Dataset.from_pandas(ds, preserve_index=False)
     ds.push_to_hub(REPO_ID)
     print('Pushed successfully')
