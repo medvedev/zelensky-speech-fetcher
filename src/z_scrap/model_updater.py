@@ -7,7 +7,7 @@ REPO_ID = 'slava-medvedev/zelensky-speeches'
 
 def update_dataset(new_items):
     if len(new_items) != 0:
-        dataset = load_dataset(REPO_ID, split="train")
+        dataset = load_dataset(REPO_ID, split="train", cache_dir="./cache")
         old_num_rows = dataset.num_rows
         for new_speech in new_items:
             dataset = dataset.add_item(new_speech)

@@ -7,6 +7,8 @@ from date_parse import parse
 from model_updater import update_dataset
 from selenium_driver import create_driver
 
+from language_checker import is_english
+
 
 def epoch_filename(language):
     return f"last_speech_timestamp_{language}.txt"
@@ -34,9 +36,10 @@ def extract_data(url, language="uk", force=False):
         elements_on_page = []
         for i, element in enumerate(topics_list):
             date_element = element.find_element(By.XPATH, "../../p")
-            elements_on_page.append({'href': element.get_attribute('href'),
-                                     'topic': element.text,
-                                     'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
+            if language == "uk" or is_english(element.text):
+                elements_on_page.append({'href': element.get_attribute('href'),
+                                         'topic': element.text,
+                                         'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
 
         print(f"Parsed successfully: {url}")
 

@@ -5,6 +5,9 @@ on:
     - cron: '20 23 * * *'
   workflow_dispatch:
 
+env:
+  HF_HOME: "./.huggignface"
+
 jobs:
   run-python-script:
     runs-on: ubuntu-latest
@@ -12,6 +15,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Cache Language detection model
+        id: cache-language-detection-model
+        uses: actions/cache@v4
+        with:
+          path: ${{env.HF_HOME}}/hub/models--papluca--xlm-roberta-base-language-detection
+          key: ${{ runner.os }}-huggingface
 
       - name: Install Poetry
         uses: snok/install-poetry@v1

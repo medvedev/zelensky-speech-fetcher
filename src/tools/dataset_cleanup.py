@@ -47,15 +47,14 @@ ds = dataset.to_pandas()
 
 
 # Remove row by index:
-# rus_speech_url = 'https://www.president.gov.ua/news/prezident-ukrainy-vladimir-zelenskij-obratilsya-k-grazhdanam-73217'
-# ds = ds.drop(ds[ds['link'] == rus_speech_url].index)
-# ds_modified = True
+polish_speech_url = 'https://www.president.gov.ua/en/news/ukrayina-ta-polsha-mozhut-buti-vilnimi-tilki-razom-i-ce-fund-88489'
+ds = ds.drop(ds[ds['link'] == polish_speech_url].index)
 
 ds_modified = True
 
 
 if ds_modified:
-    ds = ds.drop(columns=['__index_level_0__'])
+    # ds = ds.drop(columns=['__index_level_0__'])
     ds = Dataset.from_pandas(ds, preserve_index=False)
     ds.push_to_hub(REPO_ID)
     print('Pushed successfully')
