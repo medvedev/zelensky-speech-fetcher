@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 
 from datasets import load_dataset, Dataset
+from transformers import pipeline
 
 
 def convert_date(date_str):
@@ -17,6 +18,15 @@ REPO_ID = 'slava-medvedev/zelensky-speeches'
 
 dataset = load_dataset(REPO_ID, split='train', cache_dir='./.cache')
 ds = dataset.to_pandas()
+
+# pipe = pipeline("text-classification",
+#                 model="papluca/xlm-roberta-base-language-detection")
+# for row in ds[ds["lang"] == "en"].iterrows():
+#     label_ = pipe(row[1]["full_text"], top_k=1, truncation=True)[0]["label"]
+#     if label_ != "en":
+#         link_ = row[1]["link"]
+#         print(f"{link_} : {label_}")
+
 # ds['date'] = ds['date'].apply(convert_date)
 # ds_modified = False
 #
@@ -47,11 +57,16 @@ ds = dataset.to_pandas()
 
 
 # Remove row by index:
-polish_speech_url = 'https://www.president.gov.ua/en/news/ukrayina-ta-polsha-mozhut-buti-vilnimi-tilki-razom-i-ce-fund-88489'
-ds = ds.drop(ds[ds['link'] == polish_speech_url].index)
+speeches_to_remove = [
+    'https://www.president.gov.ua/en/news/ukrayina-ta-polsha-mozhut-buti-vilnimi-tilki-razom-i-ce-fund-88489',
+    'https://www.president.gov.ua/en/news/la-paz-tiene-que-ser-una-opcion-sin-alternativas-por-eso-el-82409',
+    'https://www.president.gov.ua/en/news/europa-und-andere-teile-der-welt-sollten-kein-ort-sein-dem-d-82909',
+    'https://www.president.gov.ua/en/news/address-president-ukraine-arab-league-summit-83101',
+    'https://www.president.gov.ua/en/news/spilne-zvernennya-prezidenta-ukrayini-volodimira-zelenskogo-83549', ]
+for speech_url in speeches_to_remove:
+    ds = ds.drop(ds[ds['link'] == speech_url].index)
 
 ds_modified = True
-
 
 if ds_modified:
     # ds = ds.drop(columns=['__index_level_0__'])

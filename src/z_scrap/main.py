@@ -35,11 +35,13 @@ def extract_data(url, language="uk", force=False):
 
         elements_on_page = []
         for i, element in enumerate(topics_list):
-            date_element = element.find_element(By.XPATH, "../../p")
+            date_element = element.find_element(By.XPATH, '//p[@class="date"]')
             if language == "uk" or is_english(element.text):
                 elements_on_page.append({'href': element.get_attribute('href'),
                                          'topic': element.text,
                                          'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
+            else:
+                print(f"Element is not in English")
 
         print(f"Parsed successfully: {url}")
 
