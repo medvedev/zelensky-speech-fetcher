@@ -31,17 +31,20 @@ def extract_data(url, language="uk", force=False):
     speeches = []
     try:
         driver.get(url)
-        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/div[@class="item_stat cat_stat"]//h3/a')
+        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]')
+        dates = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]/p')
+        hrefs = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]/h3/a')
 
         elements_on_page = []
         for i, element in enumerate(topics_list):
-            date_element = element.find_element(By.XPATH, '//p[@class="date"]')
+            date_element = dates[i]
             if language == "uk" or is_english(element.text):
-                elements_on_page.append({'href': element.get_attribute('href'),
-                                         'topic': element.text,
+                href_element = hrefs[i]
+                elements_on_page.append({'href': href_element.get_attribute('href'),
+                                         'topic': href_element.text,
                                          'date': parse(re.sub('\s+', ' ', date_element.text).strip())})
             else:
-                print(f"Element is not in English")
+                print(f"Element is not in English or Ukrainian")
 
         print(f"Parsed successfully: {url}")
 

@@ -47,24 +47,24 @@ ds = dataset.to_pandas()
 # ds_modified = True
 
 # Remove duplicates:
-# duplicates = ds[ds.duplicated(subset='date', keep=False)]
-# if duplicates.empty:
-#     print("No duplicates found in.")
-# else:
-#     ds.drop_duplicates(subset=['date', 'lang'], keep='first', inplace = True)
-#     print("Duplicates removed and dataset saved.")
-#     ds_modified = True
+duplicates = ds[ds.duplicated(subset='date', keep=False)]
+if duplicates.empty:
+    print("No duplicates found in.")
+else:
+    ds.drop_duplicates(subset=['date', 'lang'], keep='first', inplace = True)
+    print("Duplicates removed and dataset saved.")
+    ds_modified = True
 
 
 # Remove row by index:
-speeches_to_remove = [
-    'https://www.president.gov.ua/en/news/ukrayina-ta-polsha-mozhut-buti-vilnimi-tilki-razom-i-ce-fund-88489',
-    'https://www.president.gov.ua/en/news/la-paz-tiene-que-ser-una-opcion-sin-alternativas-por-eso-el-82409',
-    'https://www.president.gov.ua/en/news/europa-und-andere-teile-der-welt-sollten-kein-ort-sein-dem-d-82909',
-    'https://www.president.gov.ua/en/news/address-president-ukraine-arab-league-summit-83101',
-    'https://www.president.gov.ua/en/news/spilne-zvernennya-prezidenta-ukrayini-volodimira-zelenskogo-83549', ]
-for speech_url in speeches_to_remove:
-    ds = ds.drop(ds[ds['link'] == speech_url].index)
+# speeches_to_remove = [
+#     'https://www.president.gov.ua/en/news/ukrayina-ta-polsha-mozhut-buti-vilnimi-tilki-razom-i-ce-fund-88489',
+#     'https://www.president.gov.ua/en/news/la-paz-tiene-que-ser-una-opcion-sin-alternativas-por-eso-el-82409',
+#     'https://www.president.gov.ua/en/news/europa-und-andere-teile-der-welt-sollten-kein-ort-sein-dem-d-82909',
+#     'https://www.president.gov.ua/en/news/address-president-ukraine-arab-league-summit-83101',
+#     'https://www.president.gov.ua/en/news/spilne-zvernennya-prezidenta-ukrayini-volodimira-zelenskogo-83549', ]
+# for speech_url in speeches_to_remove:
+#     ds = ds.drop(ds[ds['link'] == speech_url].index)
 
 ds_modified = True
 
