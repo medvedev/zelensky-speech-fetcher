@@ -1,6 +1,5 @@
 from datetime import datetime
 
-# Define the Ukrainian month names and their English equivalents
 ukrainian_months = {
     'січня': 'January',
     'лютого': 'February',
@@ -22,7 +21,6 @@ def to_timestamp(date_string, format_str):
 
 
 def parse(date_string):
-    # Replace Ukrainian month names with English equivalents
     for ukr_month, eng_month in ukrainian_months.items():
         new_date_string = date_string.replace(ukr_month, eng_month)
         if new_date_string != date_string:
