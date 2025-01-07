@@ -4,7 +4,7 @@ import re
 from selenium.webdriver.common.by import By
 
 from date_parse import parse
-from model_updater import update_dataset
+from dataset_updater import update_dataset
 from selenium_driver import create_driver
 
 from language_checker import is_english

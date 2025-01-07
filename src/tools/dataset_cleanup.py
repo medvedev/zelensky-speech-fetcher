@@ -5,6 +5,8 @@ import pandas as pd
 from datasets import load_dataset, Dataset
 from transformers import pipeline
 
+from src.z_scrap.dataset_updater import REPO_ID
+
 
 def convert_date(date_str):
     if "T" in date_str:
@@ -13,8 +15,6 @@ def convert_date(date_str):
         date_format = '%Y-%m-%d %H:%M:%S.%f'
     return int(datetime.strptime(date_str, date_format).timestamp())
 
-
-REPO_ID = 'slava-medvedev/zelensky-speeches'
 
 dataset = load_dataset(REPO_ID, split='train', cache_dir='./.cache')
 ds = dataset.to_pandas()
