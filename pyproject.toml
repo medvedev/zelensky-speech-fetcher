@@ -6,9 +6,9 @@ authors = ["Slava Medvediev <slava.medvedev@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10.12"
+python = "^3.10.16"
 requests = "^2.32.3"
-pandas = "^2.2.2"
+pandas = "^2.2.3"
 datasets = "^3.2.0"
 huggingface-hub = "^0.27.1"
 selenium = "^4.23.1"
