@@ -8,7 +8,7 @@ from dataset_updater import update_dataset
 from selenium_driver import create_driver
 
 from language_checker import is_english
-from src.z_scrap.simple_language_checker import looks_like_english_text
+from simple_language_checker import looks_like_english_text
 
 
 def epoch_filename(language):
