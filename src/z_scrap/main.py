@@ -9,7 +9,6 @@ from date_parse import parse
 from dataset_updater import update_dataset
 from selenium_driver import create_driver
 
-from language_checker import is_english
 from simple_language_checker import looks_like_english_text
 
 
