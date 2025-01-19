@@ -1,6 +1,8 @@
 import traceback
 
 import re
+
+from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 
 from date_parse import parse
@@ -23,8 +25,13 @@ def is_after_saved_timestamp(speech_epoch, language="uk"):
 
 def get_full_text(driver, speech_url):
     driver.get(speech_url)
-    article_content = driver.find_element(By.XPATH, '//div[@class="article_content"]').text
-    return re.sub('\s+', ' ', article_content).strip()
+    try:
+        article_content = driver.find_element(By.XPATH, '//div[@class="article_content"]').text
+        return re.sub('\s+', ' ', article_content).strip()
+    except  WebDriverException:
+        traceback.print_exc()
+        print(f"\nError reading speech from URL {speech_url}")
+        pass
 
 
 def extract_data(url, language="uk", force=False):
