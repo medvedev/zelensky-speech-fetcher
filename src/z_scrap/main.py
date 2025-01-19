@@ -8,6 +8,7 @@ from dataset_updater import update_dataset
 from selenium_driver import create_driver
 
 from language_checker import is_english
+from src.z_scrap.simple_language_checker import looks_like_english_text
 
 
 def epoch_filename(language):
@@ -38,7 +39,8 @@ def extract_data(url, language="uk", force=False):
         elements_on_page = []
         for i, element in enumerate(topics_list):
             date_element = dates[i]
-            if language == "uk" or is_english(element.text):
+            # if language == "uk" or is_english(element.text):
+            if language == "uk" or looks_like_english_text(element.text):
                 href_element = hrefs[i]
                 elements_on_page.append({'href': href_element.get_attribute('href'),
                                          'topic': href_element.text,
