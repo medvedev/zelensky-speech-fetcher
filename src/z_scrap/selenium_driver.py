@@ -11,9 +11,18 @@ def create_driver():
     chromium_options = Options()
     chromium_options.binary_location = "/usr/bin/chromium-browser"
     chromium_options.add_argument(f"user-agent={select_user_agent()}")
-    for arg in ['--headless=new', '--disable-javascript', '--remote-debugging-port=9222', '--disable-extensions']:
+    arguments = ['--headless=new',
+                 '--disable-javascript',
+                 '--remote-debugging-port=9222',
+                 '--disable-extensions',
+                 '--no-sandbox',
+                 '--disable-dev-shm-usage',
+                 '--disable-gpu']
+    for arg in arguments:
         chromium_options.add_argument(arg)
-    return webdriver.Chrome(options=chromium_options)
+    chrome = webdriver.Chrome(options=chromium_options)
+    print("Chrome driver created")
+    return chrome
 
 
 def select_user_agent():

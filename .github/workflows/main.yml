@@ -16,6 +16,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Check Chrome version
+        run: google-chrome --version
+
 #      - name: Cache Language detection model
 #        id: cache-language-detection-model
 #        uses: actions/cache@v4
