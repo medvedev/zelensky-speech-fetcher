@@ -29,11 +29,14 @@ jobs:
           cache: 'poetry'
 
       - name: Fetch and update speeches
-        run: |
-          poetry install --no-root
-          source $(poetry env info --path)/bin/activate
-          huggingface-cli login --token ${{ secrets.HF_TOKEN }}
-          python ./src/z_scrap/main.py
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 3
+          command: |
+            poetry install --no-root
+            source $(poetry env info --path)/bin/activate
+            huggingface-cli login --token ${{ secrets.HF_TOKEN }}
+            python ./src/z_scrap/main.py
 
       - name: Commit and push latest speech timestamp
         run: |
