@@ -32,6 +32,7 @@ jobs:
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
+          timeout_minutes: 4
           command: |
             poetry install --no-root
             source $(poetry env info --path)/bin/activate
