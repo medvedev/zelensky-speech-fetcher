@@ -167,3 +167,4 @@ cython_debug/
 /.idea/vcs.xml
 /.idea/zelensky-speech-fetcher.iml
 /.huggingface/
+/cache/

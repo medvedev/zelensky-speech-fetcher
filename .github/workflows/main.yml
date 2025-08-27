@@ -39,6 +39,15 @@ jobs:
             hf auth login --token ${{ secrets.HF_TOKEN }}
             python ./src/z_scrap/main.py
 
+      - name: Upload debug artifacts (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-output
+          path: src/z_scrap/debug_output/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Commit and push latest speech timestamp
         run: |
           git config user.name github-actions
