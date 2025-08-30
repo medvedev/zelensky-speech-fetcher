@@ -141,6 +141,10 @@ def extract_data(url, language="uk", force=False):
 
 
 def main():
+    import os
+    retry_attempt = os.environ.get('GITHUB_RUN_ATTEMPT', '1')
+    print(f"=== Starting speech fetcher (retry attempt: {retry_attempt}) ===")
+    
     languages = ['en', 'uk']
     timestamps = {}
     new_speeches = []
