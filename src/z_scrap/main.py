@@ -12,7 +12,7 @@ from xpath_selectors import SPEECH_ITEMS, SPEECH_DATES, SPEECH_HREFS, ARTICLE_CO
 from debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
     debug_element_detection, debug_language_filtering, debug_element_processing,
-    debug_processing_results, debug_bounds_check
+    debug_processing_results, debug_bounds_check, debug_probe_selectors
 )
 
 
@@ -47,16 +47,16 @@ def extract_data(url, language="uk", force=False):
         
         print(f"Page loaded. Title: {driver.title}")
         print(f"Current URL: {driver.current_url}")
-        
-        # Find elements with detailed logging
+        print(f"Page source size: {len(driver.page_source)} bytes")
+
         print("Searching for speech elements...")
         topics_list = driver.find_elements(By.XPATH, SPEECH_ITEMS)
         dates = driver.find_elements(By.XPATH, SPEECH_DATES)
         hrefs = driver.find_elements(By.XPATH, SPEECH_HREFS)
 
-        # Debug element detection with helper function
         elements_ok, error_context = debug_element_detection(topics_list, dates, hrefs, url, language)
         if not elements_ok:
+            debug_probe_selectors(driver)
             save_debug_html(driver, url, language, error_context)
             log_group_end()
             return None, []
@@ -85,7 +85,13 @@ def extract_data(url, language="uk", force=False):
                     reason = f"English check: {is_valid}"
                 
                 if is_valid:
-                    parsed_date = parse(re.sub('\s+', ' ', date_text).strip())
+                    clean_date_text = re.sub('\s+', ' ', date_text).strip()
+                    try:
+                        parsed_date = parse(clean_date_text)
+                    except Exception as e:
+                        log_warning(f"Date parse failed for {clean_date_text!r}: {e}")
+                        parsed_date = None
+                    print(f"  date_text={clean_date_text!r}  parsed={parsed_date}")
                     elements_on_page.append({
                         'href': href_element.get_attribute('href'),
                         'topic': href_element.text,
@@ -132,8 +138,9 @@ def extract_data(url, language="uk", force=False):
                 print(f"\nError reading speeches from URL {url}")
                 pass
 
-        # Return the most recent speech date (first element) if available
         latest_timestamp = elements_on_page[0].get('date') if elements_on_page else None
+        if latest_timestamp is None:
+            log_error(f"latest_timestamp is None — elements_on_page[0]={elements_on_page[0] if elements_on_page else 'empty'}")
         print(f"Returning latest timestamp: {latest_timestamp}, speeches count: {len(speeches)}")
         return latest_timestamp, speeches
     finally:

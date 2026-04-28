@@ -53,6 +53,50 @@ def log_group_end():
     print("::endgroup::")
 
 
+def debug_probe_selectors(driver):
+    """Probe the page with progressively broader selectors to diagnose what's there."""
+    from selenium.webdriver.common.by import By
+
+    probes = [
+        ('//div[@class="cat_list"]',                             'cat_list'),
+        ('//div[contains(@class,"item_stat")]',                  'item_stat (any)'),
+        ('//div[@class="item_stat_headline"]',                   'item_stat_headline (exact)'),
+        ('//div[contains(@class,"item_stat_headline")]',         'item_stat_headline (contains)'),
+        ('//p[@class="date"]',                                   'p.date (exact)'),
+        ('//p[contains(@class,"date")]',                         'p[date] (contains)'),
+        ('//div[@class="cat_list"]//p',                          'any <p> inside cat_list'),
+        ('//div[@class="cat_list"]//h3//a',                      'h3>a inside cat_list'),
+    ]
+
+    print("=== Selector diagnostics ===")
+    for xpath, label in probes:
+        try:
+            els = driver.find_elements(By.XPATH, xpath)
+            print(f"  [{len(els):3d}] {label}")
+            for el in els[:2]:
+                try:
+                    cls = el.get_attribute('class') or ''
+                    txt = (el.text or '')[:80].replace('\n', ' ')
+                    print(f"         class={cls!r}  text={txt!r}")
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"  [ERR] {label}: {e}")
+
+    try:
+        src = driver.page_source or ''
+        print(f"=== Page source: {len(src)} bytes ===")
+        idx = src.find('cat_list')
+        if idx >= 0:
+            print(f"  'cat_list' found at byte {idx}, context:")
+            print(src[max(0, idx - 100):idx + 600])
+        else:
+            print("  'cat_list' NOT found in page source — first 2000 bytes:")
+            print(src[:2000])
+    except Exception as e:
+        print(f"  Failed to inspect page source: {e}")
+
+
 def debug_element_detection(topics_list, dates, hrefs, url, language):
     """Log detailed information about element detection"""
     print(f"Found elements: topics={len(topics_list)}, dates={len(dates)}, hrefs={len(hrefs)}")
