@@ -28,8 +28,7 @@ jobs:
       - name: Install dependencies and Playwright browser
         run: |
           poetry install --no-root
-          source $(poetry env info --path)/bin/activate
-          playwright install --with-deps chromium
+          poetry run playwright install --with-deps chromium
 
       - name: Fetch and update speeches
         uses: nick-fields/retry@v3
@@ -37,9 +36,8 @@ jobs:
           max_attempts: 3
           timeout_minutes: 10
           command: |
-            source $(poetry env info --path)/bin/activate
-            hf auth login --token ${{ secrets.HF_TOKEN }}
-            python ./src/z_scrap/main.py
+            poetry run hf auth login --token ${{ secrets.HF_TOKEN }}
+            poetry run python ./src/z_scrap/main.py
 
       - name: Upload debug artifacts (if any)
         if: always()
