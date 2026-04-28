@@ -10,7 +10,7 @@ python = "^3.10.20"
 requests = "^2.33.1"
 pandas = "^2.3.2"
 datasets = "^4.0.0"
-huggingface-hub = "^0.34.4"
+huggingface-hub = "1.12.0"
 fsspec = ">=2023.1.0,<2026.0.0"
 curl-cffi = ">=0.7"
 lxml = ">=5.0"
@@ -21,7 +21,7 @@ poetry-core = "^2.3.2"
 optional = true
 
 [tool.poetry.group.tools.dependencies]
-transformers = "^4.55.4"
+transformers = "^5.5.4"
 torch = "^2.7.1"
 
 [build-system]
