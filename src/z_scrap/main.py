@@ -1,20 +1,94 @@
+import time
 import traceback
 import re
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 
 from curl_cffi import requests
 from lxml import html
 
-from date_parse import parse
 from dataset_updater import update_dataset
-from simple_language_checker import looks_like_english_text
-from xpath_selectors import SPEECH_ITEMS, SPEECH_DATES, SPEECH_HREFS, ARTICLE_CONTENT
+from xpath_selectors import ARTICLE_CONTENT
 from debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
-    debug_element_detection, debug_language_filtering, debug_element_processing,
-    debug_processing_results, debug_bounds_check,
 )
 
-IMPERSONATE = "chrome120"
+IMPERSONATE = "chrome131"
+
+_STEALTH_SCRIPT = """
+    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+    Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+    Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+    window.chrome = {runtime: {}};
+"""
+
+RSS_URLS = {
+    'en': 'https://www.president.gov.ua/en/rss/news/speeches.rss',
+    'uk': 'https://www.president.gov.ua/rss/news/speeches.rss',
+}
+
+
+class HttpFetcher:
+    """Fetches pages with curl_cffi; on bot-detection block falls back to Playwright."""
+
+    def __init__(self):
+        self._session = requests.Session()
+        self._pw = None
+        self._pw_page = None
+
+    def get_html(self, url):
+        """Returns (html_text, status_code)."""
+        try:
+            resp = self._session.get(url, impersonate=IMPERSONATE, timeout=20)
+            if resp.status_code == 200 and "Access Denied" not in resp.text[:500]:
+                return resp.text, 200
+            print(f"curl_cffi: status={resp.status_code} size={len(resp.text)}b — falling back to Playwright")
+            fallback = self._playwright_get(url)
+            if fallback and "Access Denied" not in fallback[:500]:
+                return fallback, 200
+            return fallback or resp.text, resp.status_code
+        except Exception as e:
+            log_warning(f"curl_cffi error for {url}: {e}")
+            fallback = self._playwright_get(url)
+            return fallback or "", 0
+
+    def _playwright_get(self, url):
+        try:
+            if self._pw_page is None:
+                self._init_playwright()
+            self._pw_page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            time.sleep(4)  # allow Akamai JS challenge to complete
+            return self._pw_page.content()
+        except Exception as e:
+            log_warning(f"Playwright fetch failed for {url}: {e}")
+            return None
+
+    def _init_playwright(self):
+        from playwright.sync_api import sync_playwright
+        self._pw = sync_playwright().start()
+        browser = self._pw.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            locale="en-US",
+        )
+        context.add_init_script(_STEALTH_SCRIPT)
+        self._pw_page = context.new_page()
+
+    def close(self):
+        if self._pw is not None:
+            try:
+                self._pw.stop()
+            except Exception:
+                pass
+            self._pw = None
+            self._pw_page = None
 
 
 def epoch_filename(language):
@@ -27,10 +101,20 @@ def is_after_saved_timestamp(speech_epoch, language="uk"):
     return speech_epoch > saved_epoch
 
 
-def get_full_text(session, speech_url):
+def parse_rss_date(date_str):
+    if not date_str:
+        return None
     try:
-        resp = session.get(speech_url, impersonate=IMPERSONATE, timeout=20)
-        tree = html.fromstring(resp.text)
+        return int(parsedate_to_datetime(date_str).timestamp())
+    except Exception as e:
+        log_warning(f"RSS date parse failed for {date_str!r}: {e}")
+        return None
+
+
+def get_full_text(fetcher, speech_url):
+    try:
+        page_text, _ = fetcher.get_html(speech_url)
+        tree = html.fromstring(page_text)
         content = tree.xpath(ARTICLE_CONTENT)
         if content:
             return re.sub(r'\s+', ' ', content[0].text_content()).strip()
@@ -40,118 +124,79 @@ def get_full_text(session, speech_url):
     return None
 
 
-def extract_data(url, language="uk", force=False):
-    session = requests.Session()
+def extract_data(rss_url, language="uk", force=False):
+    fetcher = HttpFetcher()
     speeches = []
     try:
-        log_group_start(f"Processing {language} - {url}")
-        print(f"Fetching URL: {url}")
-        resp = session.get(url, impersonate=IMPERSONATE, timeout=20)
+        log_group_start(f"Processing {language} - {rss_url}")
+        print(f"Fetching RSS: {rss_url}")
+        rss_text, status = fetcher.get_html(rss_url)
 
-        print(f"Status: {resp.status_code}")
-        print(f"Page size: {len(resp.text)} bytes")
+        print(f"Status: {status}, size: {len(rss_text)} bytes")
 
-        if resp.status_code != 200 or "Access Denied" in resp.text[:500]:
-            log_error(f"Access denied or unexpected status {resp.status_code} for {url}")
-            save_debug_html(resp.text, url, language, "access_denied")
+        if status != 200:
+            log_error(f"Failed to fetch RSS {rss_url}: status {status}")
+            save_debug_html(rss_text, rss_url, language, f"rss_fetch_failed_{status}")
             log_group_end()
             return None, []
 
-        tree = html.fromstring(resp.text)
-        topics_list = tree.xpath(SPEECH_ITEMS)
-        dates = tree.xpath(SPEECH_DATES)
-        hrefs = tree.xpath(SPEECH_HREFS)
-
-        elements_ok, error_context = debug_element_detection(topics_list, dates, hrefs, url, language)
-        if not elements_ok:
-            save_debug_html(resp.text, url, language, error_context)
+        try:
+            root = ET.fromstring(rss_text)
+        except ET.ParseError as e:
+            log_error(f"RSS parse error for {rss_url}: {e}")
+            save_debug_html(rss_text, rss_url, language, "rss_parse_error")
             log_group_end()
             return None, []
 
-        elements_on_page = []
-        filtered_out = 0
-        for i, element in enumerate(topics_list):
-            try:
-                if not debug_bounds_check(i, len(dates), len(hrefs)):
-                    continue
+        items = root.find('channel').findall('item')
+        print(f"RSS items: {len(items)}")
 
-                date_element = dates[i]
-                href_element = hrefs[i]
-
-                element_text = element.text_content().strip()
-                date_text = date_element.text_content().strip()
-
-                debug_element_processing(i, element_text, date_text)
-
-                if language == "uk":
-                    is_valid = True
-                    reason = "Ukrainian language"
-                else:
-                    is_valid = looks_like_english_text(element_text)
-                    reason = f"English check: {is_valid}"
-
-                if is_valid:
-                    clean_date_text = re.sub(r'\s+', ' ', date_text).strip()
-                    try:
-                        parsed_date = parse(clean_date_text)
-                    except Exception as e:
-                        log_warning(f"Date parse failed for {clean_date_text!r}: {e}")
-                        parsed_date = None
-                    print(f"  date_text={clean_date_text!r}  parsed={parsed_date}")
-                    elements_on_page.append({
-                        'href': href_element.get('href'),
-                        'topic': href_element.text_content().strip(),
-                        'date': parsed_date
-                    })
-                    debug_language_filtering(element_text, language, True, reason)
-                else:
-                    filtered_out += 1
-                    debug_language_filtering(element_text, language, False, reason)
-            except Exception as e:
-                log_warning(f"Error processing element {i}: {e}")
-                continue
-
-        debug_processing_results(len(elements_on_page), filtered_out)
-
-        if len(elements_on_page) == 0:
-            log_error(f"No valid elements after filtering on {url}")
-            save_debug_html(resp.text, url, language, "no_valid_elements_after_filtering")
+        if not items:
+            log_error(f"No items in RSS feed {rss_url}")
             log_group_end()
             return None, []
 
-        print(f"Parsed successfully: {url}")
+        latest_timestamp = parse_rss_date(items[0].findtext('pubDate'))
+        if latest_timestamp is None:
+            log_error(f"Could not parse date from first RSS item: {items[0].findtext('pubDate')!r}")
+            log_group_end()
+            return None, []
+
         log_group_end()
 
-        for i, element in enumerate(elements_on_page):
-            print(f"  speech {i} ... ", end='')
-            try:
-                speech_date = element.get('date')
-                if force or is_after_saved_timestamp(speech_date, language=language):
-                    speech_href = element.get('href')
-                    full_text = get_full_text(session, speech_href)
-                    speeches.append({
-                        'date': speech_date,
-                        'link': speech_href,
-                        'topic': element.get('topic'),
-                        'full_text': full_text,
-                        'lang': language})
-                    print("Done")
-                else:
-                    print("\nNo more new speeches")
-                    break
-            except Exception:
-                traceback.print_exc()
-                print(f"\nError reading speeches from URL {url}")
+        for i, item in enumerate(items):
+            speech_date = parse_rss_date(item.findtext('pubDate'))
+            speech_href = item.findtext('link')
+            speech_topic = item.findtext('title', '').strip()
 
-        latest_timestamp = elements_on_page[0].get('date') if elements_on_page else None
-        if latest_timestamp is None:
-            log_error(f"latest_timestamp is None — elements_on_page[0]={elements_on_page[0] if elements_on_page else 'empty'}")
-        print(f"Returning latest timestamp: {latest_timestamp}, speeches count: {len(speeches)}")
+            if not speech_date or not speech_href:
+                log_warning(f"Skipping item {i}: missing date or link")
+                continue
+
+            print(f"  speech {i}: {speech_topic[:60]!r}  date={speech_date}")
+
+            if force or is_after_saved_timestamp(speech_date, language=language):
+                full_text = get_full_text(fetcher, speech_href)
+                speeches.append({
+                    'date': speech_date,
+                    'link': speech_href,
+                    'topic': speech_topic,
+                    'full_text': full_text,
+                    'lang': language,
+                })
+                print(f"    → fetched ({len(full_text or '')} chars)")
+            else:
+                print(f"  No more new speeches (stopped at index {i})")
+                break
+
+        print(f"Returning latest_timestamp={latest_timestamp}, speeches={len(speeches)}")
         return latest_timestamp, speeches
     except Exception:
         traceback.print_exc()
         log_group_end()
         return None, []
+    finally:
+        fetcher.close()
 
 
 def main():
@@ -165,16 +210,11 @@ def main():
     errors_occurred = False
 
     for language in languages:
-        print(f"Processing latest page for language {language}")
-        if language == 'uk':
-            url_suffix = "/"
-        else:
-            url_suffix = f"/{language}/"
+        rss_url = RSS_URLS[language]
+        print(f"Processing {language}: {rss_url}")
 
         try:
-            timestamps[language], new_speeches_lang = extract_data(
-                f"https://www.president.gov.ua{url_suffix}news/speeches",
-                language=language)
+            timestamps[language], new_speeches_lang = extract_data(rss_url, language=language)
 
             if timestamps[language] is None:
                 log_error(f"No timestamp returned for language {language}: blocking error")
@@ -190,8 +230,7 @@ def main():
             errors_occurred = True
 
     if len(new_speeches) != 0:
-        print(f'Got {len(new_speeches)} new speeches. '
-              f'Latest timestamps: {timestamps}')
+        print(f'Got {len(new_speeches)} new speeches. Latest timestamps: {timestamps}')
         update_dataset(new_speeches)
         for language in languages:
             if timestamps[language] is not None:

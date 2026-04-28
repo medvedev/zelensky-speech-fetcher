@@ -25,13 +25,18 @@ jobs:
           python-version: '3.10.16'
           cache: 'poetry'
 
+      - name: Install dependencies and Playwright browser
+        run: |
+          poetry install --no-root
+          source $(poetry env info --path)/bin/activate
+          playwright install --with-deps chromium
+
       - name: Fetch and update speeches
         uses: nick-fields/retry@v3
         with:
           max_attempts: 3
-          timeout_minutes: 4
+          timeout_minutes: 10
           command: |
-            poetry install --no-root
             source $(poetry env info --path)/bin/activate
             hf auth login --token ${{ secrets.HF_TOKEN }}
             python ./src/z_scrap/main.py
@@ -41,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-output
-          path: src/z_scrap/debug_output/
+          path: debug_output/
           if-no-files-found: ignore
           retention-days: 7
 
