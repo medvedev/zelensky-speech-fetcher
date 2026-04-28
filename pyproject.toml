@@ -6,7 +6,7 @@ authors = ["Slava Medvediev <slava.medvedev@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10.16"
+python = "^3.10.20"
 requests = "^2.33.1"
 pandas = "^2.3.2"
 datasets = "^4.0.0"
@@ -15,9 +15,14 @@ fsspec = ">=2023.1.0,<2026.0.0"
 curl-cffi = ">=0.7"
 lxml = ">=5.0"
 playwright = ">=1.40"
+poetry-core = "^2.3.2"
+
+[tool.poetry.group.tools]
+optional = true
+
+[tool.poetry.group.tools.dependencies]
 transformers = "^4.55.4"
 torch = "^2.7.1"
-poetry-core = "^2.3.2"
 
 [build-system]
 requires = ["poetry-core"]
