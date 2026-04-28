@@ -8,7 +8,7 @@ from date_parse import parse
 from dataset_updater import update_dataset
 from selenium_driver import create_driver
 from simple_language_checker import looks_like_english_text
-from selectors import SPEECH_ITEMS, SPEECH_DATES, SPEECH_HREFS, ARTICLE_CONTENT
+from xpath_selectors import SPEECH_ITEMS, SPEECH_DATES, SPEECH_HREFS, ARTICLE_CONTENT
 from debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
     debug_element_detection, debug_language_filtering, debug_element_processing,
