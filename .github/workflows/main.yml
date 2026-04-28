@@ -16,9 +16,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Check Chrome version
-        run: google-chrome --version
-
       - name: Install Poetry
         uses: snok/install-poetry@v1
 

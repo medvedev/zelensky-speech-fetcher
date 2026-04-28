@@ -8,7 +8,7 @@
 
 # Speech list page
 SPEECH_ITEMS = '//div[@class="cat_list"]//div[@class="item_stat_headline"]'
-SPEECH_DATES = '//div[@class="cat_list"]//div[@class="item_stat_headline"]//p[@class="date"]'
+SPEECH_DATES = '//div[@class="cat_list"]//div[@class="item_stat_headline"]//p[contains(@class,"date")]'
 SPEECH_HREFS = '//div[@class="cat_list"]//div[@class="item_stat_headline"]//h3//a'
 
 # Speech detail page
