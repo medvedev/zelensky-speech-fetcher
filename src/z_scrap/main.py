@@ -8,6 +8,7 @@ from date_parse import parse
 from dataset_updater import update_dataset
 from selenium_driver import create_driver
 from simple_language_checker import looks_like_english_text
+from selectors import SPEECH_ITEMS, SPEECH_DATES, SPEECH_HREFS, ARTICLE_CONTENT
 from debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
     debug_element_detection, debug_language_filtering, debug_element_processing,
@@ -28,7 +29,7 @@ def is_after_saved_timestamp(speech_epoch, language="uk"):
 def get_full_text(driver, speech_url):
     driver.get(speech_url)
     try:
-        article_content = driver.find_element(By.XPATH, '//div[@class="article_content"]').text
+        article_content = driver.find_element(By.XPATH, ARTICLE_CONTENT).text
         return re.sub('\s+', ' ', article_content).strip()
     except  WebDriverException:
         traceback.print_exc()
@@ -49,9 +50,9 @@ def extract_data(url, language="uk", force=False):
         
         # Find elements with detailed logging
         print("Searching for speech elements...")
-        topics_list = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]')
-        dates = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]/p')
-        hrefs = driver.find_elements(By.XPATH, '//div[@class="cat_list"]/*/div[@class="item_stat_headline"]/h3/a')
+        topics_list = driver.find_elements(By.XPATH, SPEECH_ITEMS)
+        dates = driver.find_elements(By.XPATH, SPEECH_DATES)
+        hrefs = driver.find_elements(By.XPATH, SPEECH_HREFS)
 
         # Debug element detection with helper function
         elements_ok, error_context = debug_element_detection(topics_list, dates, hrefs, url, language)
@@ -163,8 +164,8 @@ def main():
                 language=language)
             
             if timestamps[language] is None:
-                log_warning(f"No timestamp returned for language {language}")
-                errors_occurred = True
+                log_error(f"No timestamp returned for language {language}: blocking error")
+                exit(1)
             else:
                 new_speeches.extend(new_speeches_lang)
                 print(f"Successfully processed {len(new_speeches_lang)} speeches for {language}")
