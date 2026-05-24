@@ -12,4 +12,4 @@ SPEECH_DATES = '//div[@class="cat_list"]//div[@class="item_stat_headline"]//p[co
 SPEECH_HREFS = '//div[@class="cat_list"]//div[@class="item_stat_headline"]//h3//a'
 
 # Speech detail page
-ARTICLE_CONTENT = '//div[@class="article_content"]'
+ARTICLE_CONTENT = '//div[contains(@class, "article_content")]'

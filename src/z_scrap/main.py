@@ -24,7 +24,7 @@ _STEALTH_SCRIPT = """
 
 RSS_URLS = {
     'en': 'https://www.president.gov.ua/en/rss/news/speeches.rss',
-    'uk': 'https://www.president.gov.ua/rss/news/speeches.rss',
+    'uk': 'https://www.president.gov.ua/uk/rss/news/speeches.rss',
 }
 
 
@@ -113,11 +113,13 @@ def parse_rss_date(date_str):
 
 def get_full_text(fetcher, speech_url):
     try:
-        page_text, _ = fetcher.get_html(speech_url)
+        page_text, status = fetcher.get_html(speech_url)
         tree = html.fromstring(page_text)
         content = tree.xpath(ARTICLE_CONTENT)
         if content:
             return re.sub(r'\s+', ' ', content[0].text_content()).strip()
+        log_warning(f"article_content XPath matched 0 elements for {speech_url} (status={status}, size={len(page_text)})")
+        save_debug_html(page_text, speech_url, "speech", "no_article_content")
     except Exception:
         traceback.print_exc()
         print(f"\nError reading speech from URL {speech_url}")
@@ -217,8 +219,8 @@ def main():
             timestamps[language], new_speeches_lang = extract_data(rss_url, language=language)
 
             if timestamps[language] is None:
-                log_error(f"No timestamp returned for language {language}: blocking error")
-                exit(1)
+                log_error(f"No timestamp returned for language {language}: skipping this language")
+                errors_occurred = True
             else:
                 new_speeches.extend(new_speeches_lang)
                 print(f"Successfully processed {len(new_speeches_lang)} speeches for {language}")
@@ -229,25 +231,23 @@ def main():
             timestamps[language] = None
             errors_occurred = True
 
+    successful_languages = [lang for lang in languages if timestamps.get(lang) is not None]
+    if not successful_languages:
+        log_error("All languages failed to process — aborting")
+        exit(1)
+
     if len(new_speeches) != 0:
         print(f'Got {len(new_speeches)} new speeches. Latest timestamps: {timestamps}')
         update_dataset(new_speeches)
-        for language in languages:
-            if timestamps[language] is not None:
-                with open(epoch_filename(language), 'w') as file:
-                    file.write(str(timestamps[language]))
-                print(f"Updated timestamp file for {language}")
-            else:
-                log_warning(f"Skipping timestamp update for {language} due to processing error")
+        for language in successful_languages:
+            with open(epoch_filename(language), 'w') as file:
+                file.write(str(timestamps[language]))
+            print(f"Updated timestamp file for {language}")
     else:
-        if errors_occurred:
-            log_error("No new speeches found, and errors occurred during processing")
-            exit(1)
-        else:
-            print("No new speeches found")
+        print("No new speeches found")
 
     if errors_occurred:
-        log_warning("Some errors occurred during processing, check logs above")
+        log_warning("Some languages had errors during processing, check logs above")
 
 
 if __name__ == '__main__':
