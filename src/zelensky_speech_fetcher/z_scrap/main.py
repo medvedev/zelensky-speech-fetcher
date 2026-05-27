@@ -3,12 +3,14 @@ import traceback
 import re
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from curl_cffi import requests
 from lxml import html
 
 from .dataset_updater import update_dataset
-from .xpath_selectors import ARTICLE_CONTENT
+from .date_parse import parse as parse_listing_date
+from .xpath_selectors import ARTICLE_CONTENT, SPEECH_HREFS, SPEECH_DATES
 from .debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
 )
@@ -29,6 +31,11 @@ _STEALTH_SCRIPT = """
 RSS_URLS = {
     'en': 'https://www.president.gov.ua/en/rss/news/speeches.rss',
     'uk': 'https://www.president.gov.ua/uk/rss/news/speeches.rss',
+}
+
+HTML_LISTING_URLS = {
+    'en': 'https://president.gov.ua/en/news/speeches',
+    'uk': 'https://president.gov.ua/news/speeches',
 }
 
 
@@ -143,9 +150,126 @@ def get_full_text(fetcher, speech_url):
         raise SpeechExtractionError(f"Error reading speech from {speech_url}: {e}") from e
 
 
+def to_listing_url(url, language):
+    if '/rss/' in url or url.endswith('.rss'):
+        return HTML_LISTING_URLS[language]
+    return url
+
+
+def add_page_param(url, page):
+    parsed = urlparse(url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query['page'] = str(page)
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
+def normalize_href(href, base_url):
+    parsed = urlparse(base_url)
+    if href.startswith('http://') or href.startswith('https://'):
+        href_parsed = urlparse(href)
+        if href_parsed.netloc.endswith('president.gov.ua'):
+            return urlunparse(href_parsed._replace(scheme=parsed.scheme, netloc=parsed.netloc))
+        return href
+    return f'{parsed.scheme}://{parsed.netloc}{href}'
+
+
+def parse_listing_items(listing_text, language, listing_url):
+    tree = html.fromstring(listing_text)
+    hrefs = tree.xpath(SPEECH_HREFS)
+    dates = tree.xpath(SPEECH_DATES)
+
+    if not hrefs:
+        return []
+
+    items = []
+    for href_node, date_node in zip(hrefs, dates):
+        href = href_node.get('href')
+        date_text = date_node.text_content().strip()
+        title = re.sub(r'\s+', ' ', href_node.text_content()).strip()
+
+        if not href or not date_text or not title:
+            continue
+
+        try:
+            speech_date = parse_listing_date(date_text)
+        except Exception as e:
+            log_warning(f"HTML listing date parse failed for {date_text!r}: {e}")
+            continue
+
+        items.append({
+            'date': speech_date,
+            'link': normalize_href(href, listing_url),
+            'title': title,
+        })
+
+    return items
+
+
+def extract_from_html_listing(fetcher, listing_url, language="uk", force=False):
+    speeches = []
+    latest_timestamp = None
+    page = 1
+
+    while True:
+        page_url = listing_url if page == 1 else add_page_param(listing_url, page)
+        print(f"Fetching HTML listing: {page_url}")
+        listing_text, status = fetcher.get_html(page_url)
+        print(f"Status: {status}, size: {len(listing_text)} bytes")
+
+        if status != 200:
+            log_error(f"Failed to fetch HTML listing {page_url}: status {status}")
+            save_debug_html(listing_text, page_url, language, f"html_listing_fetch_failed_{status}")
+            break
+
+        items = parse_listing_items(listing_text, language, page_url)
+        print(f"HTML items on page {page}: {len(items)}")
+
+        if not items:
+            if page == 1:
+                log_error(f"No items in HTML listing {listing_url}")
+                save_debug_html(listing_text, page_url, language, "html_listing_no_items")
+            break
+
+        if latest_timestamp is None:
+            latest_timestamp = items[0]['date']
+
+        should_continue = False
+        for i, item in enumerate(items):
+            speech_date = item['date']
+            speech_href = item['link']
+            speech_topic = item['title']
+
+            print(f"  speech p{page}.{i}: {speech_topic[:60]!r}  date={speech_date}")
+
+            if force or is_after_saved_timestamp(speech_date, language=language):
+                try:
+                    full_text = get_full_text(fetcher, speech_href)
+                except SpeechExtractionError as e:
+                    log_warning(str(e))
+                    continue
+                speeches.append({
+                    'date': speech_date,
+                    'link': speech_href,
+                    'topic': speech_topic,
+                    'full_text': full_text,
+                    'lang': language,
+                })
+                should_continue = True
+                print(f"    → fetched ({len(full_text)} chars)")
+            else:
+                print(f"  No more new speeches (stopped at page {page}, index {i})")
+                return latest_timestamp, speeches
+
+        if not should_continue:
+            break
+
+        page += 1
+
+    return latest_timestamp, speeches
+
+
 def extract_data(rss_url, language="uk", force=False):
     fetcher = HttpFetcher()
-    speeches = []
     try:
         log_group_start(f"Processing {language} - {rss_url}")
         print(f"Fetching RSS: {rss_url}")
@@ -157,7 +281,9 @@ def extract_data(rss_url, language="uk", force=False):
             log_error(f"Failed to fetch RSS {rss_url}: status {status}")
             save_debug_html(rss_text, rss_url, language, f"rss_fetch_failed_{status}")
             log_group_end()
-            return None, []
+            listing_url = to_listing_url(rss_url, language)
+            print(f"Falling back to HTML listing: {listing_url}")
+            return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
 
         try:
             root = ET.fromstring(rss_text)
@@ -165,7 +291,9 @@ def extract_data(rss_url, language="uk", force=False):
             log_error(f"RSS parse error for {rss_url}: {e}")
             save_debug_html(rss_text, rss_url, language, "rss_parse_error")
             log_group_end()
-            return None, []
+            listing_url = to_listing_url(rss_url, language)
+            print(f"Falling back to HTML listing: {listing_url}")
+            return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
 
         items = root.find('channel').findall('item')
         print(f"RSS items: {len(items)}")
@@ -173,13 +301,17 @@ def extract_data(rss_url, language="uk", force=False):
         if not items:
             log_error(f"No items in RSS feed {rss_url}")
             log_group_end()
-            return None, []
+            listing_url = to_listing_url(rss_url, language)
+            print(f"Falling back to HTML listing: {listing_url}")
+            return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
 
         latest_timestamp = parse_rss_date(items[0].findtext('pubDate'))
         if latest_timestamp is None:
             log_error(f"Could not parse date from first RSS item: {items[0].findtext('pubDate')!r}")
             log_group_end()
-            return None, []
+            listing_url = to_listing_url(rss_url, language)
+            print(f"Falling back to HTML listing: {listing_url}")
+            return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
 
         log_group_end()
 
