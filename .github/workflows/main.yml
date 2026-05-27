@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies and Playwright browser
         run: |
-          poetry install --no-root
+          poetry install
           poetry run playwright install --with-deps chromium
 
       - name: Fetch and update speeches
@@ -37,7 +37,7 @@ jobs:
           timeout_minutes: 10
           command: |
             poetry run hf auth login --token ${{ secrets.HF_TOKEN }}
-            poetry run python ./src/z_scrap/main.py
+            poetry run python -m zelensky_speech_fetcher.z_scrap.main
 
       - name: Upload debug artifacts (if any)
         if: always()

@@ -1,0 +1,1 @@
+"""Zelensky speech fetcher package."""

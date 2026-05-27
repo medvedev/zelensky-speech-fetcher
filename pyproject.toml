@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Slava Medvediev <slava.medvedev@gmail.com>"]
 readme = "README.md"
+packages = [{ include = "zelensky_speech_fetcher", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.10.20"

@@ -1,7 +1,7 @@
 import json
 from time import sleep
 
-from src.z_scrap.main import extract_data
+from zelensky_speech_fetcher.z_scrap.main import extract_data
 
 
 def run():

@@ -5,7 +5,7 @@ import pandas as pd
 from datasets import load_dataset, Dataset
 from transformers import pipeline
 
-from src.z_scrap.dataset_updater import REPO_ID
+from zelensky_speech_fetcher.z_scrap.dataset_updater import REPO_ID
 
 
 def convert_date(date_str):

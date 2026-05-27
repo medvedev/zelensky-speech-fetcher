@@ -2,7 +2,7 @@ import string
 
 from datasets import load_dataset
 
-from src.z_scrap.dataset_updater import REPO_ID
+from zelensky_speech_fetcher.z_scrap.dataset_updater import REPO_ID
 
 dataset = load_dataset(REPO_ID, split="train", cache_dir="./cache")
 

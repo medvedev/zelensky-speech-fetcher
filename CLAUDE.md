@@ -6,12 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Build and install dependencies:**
 ```bash
-poetry install --no-root
+poetry install
 ```
 
 **Run main speech fetcher:**
 ```bash
-python ./src/z_scrap/main.py
+python -m zelensky_speech_fetcher.z_scrap.main
 ```
 
 **Run tests:**
@@ -35,11 +35,10 @@ This is a web scraper that fetches speeches from president.gov.ua and maintains 
 
 **Core Components:**
 
-- `src/z_scrap/main.py` - Main entry point that orchestrates the scraping process
-- `src/z_scrap/selenium_driver.py` - Creates Chrome driver with random user agents
-- `src/z_scrap/dataset_updater.py` - Handles HuggingFace dataset updates
-- `src/z_scrap/simple_language_checker.py` - Language detection for filtering content
-- `src/z_scrap/date_parse.py` - Parses Ukrainian date strings to datetime objects
+- `src/zelensky_speech_fetcher/z_scrap/main.py` - Main entry point that orchestrates the scraping process
+- `src/zelensky_speech_fetcher/z_scrap/dataset_updater.py` - Handles HuggingFace dataset updates
+- `src/zelensky_speech_fetcher/z_scrap/simple_language_checker.py` - Language detection for filtering content
+- `src/zelensky_speech_fetcher/z_scrap/date_parse.py` - Parses Ukrainian date strings to datetime objects
 
 **Data Flow:**
 1. Script fetches both Ukrainian (`/`) and English (`/en/`) speech pages
@@ -50,8 +49,8 @@ This is a web scraper that fetches speeches from president.gov.ua and maintains 
 6. Timestamp files are updated for incremental processing
 
 **Tools Directory:**
-- `src/tools/` - Analysis and cleanup utilities for the dataset
-- `src/tools/dataset_cleanup.py` - Removes duplicates and cleans dataset
+- `src/zelensky_speech_fetcher/tools/` - Analysis and cleanup utilities for the dataset
+- `src/zelensky_speech_fetcher/tools/dataset_cleanup.py` - Removes duplicates and cleans dataset
 
 **Automation:**
 - GitHub Actions runs daily at 23:20 UTC
