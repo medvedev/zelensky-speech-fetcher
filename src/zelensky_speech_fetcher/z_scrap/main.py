@@ -33,10 +33,9 @@ RSS_URLS = {
 
 
 class HttpFetcher:
-    """Fetches pages with Playwright; curl_cffi is kept as an optional fallback path."""
+    """Fetches pages with Playwright first; falls back to curl_cffi on bot-block or failure."""
 
-    def __init__(self, browser_first=True):
-        self._browser_first = browser_first
+    def __init__(self):
         self._session = requests.Session()
         self._pw = None
         self._pw_page = None
@@ -47,24 +46,21 @@ class HttpFetcher:
 
     def get_html(self, url):
         """Returns (html_text, status_code)."""
-        if self._browser_first:
-            fallback = self._playwright_get(url)
-            if fallback and not self._is_bot_challenge(fallback):
-                return fallback, 200
-            return fallback or "", 0
+        pw_html = self._playwright_get(url)
+        if pw_html and not self._is_bot_challenge(pw_html):
+            return pw_html, 200
+
+        reason = "bot challenge detected" if pw_html else "fetch failed"
+        print(f"Playwright {reason} for {url} — falling back to curl_cffi")
         try:
             resp = self._session.get(url, impersonate=IMPERSONATE, timeout=20)
             if resp.status_code == 200 and not self._is_bot_challenge(resp.text):
                 return resp.text, 200
-            print(f"curl_cffi: status={resp.status_code} size={len(resp.text)}b — falling back to Playwright")
-            fallback = self._playwright_get(url)
-            if fallback and not self._is_bot_challenge(fallback):
-                return fallback, 200
-            return fallback or resp.text, resp.status_code
+            log_warning(f"curl_cffi: status={resp.status_code} size={len(resp.text)}b — both methods failed")
+            return resp.text, resp.status_code
         except Exception as e:
             log_warning(f"curl_cffi error for {url}: {e}")
-            fallback = self._playwright_get(url)
-            return fallback or "", 0
+            return pw_html or "", 0
 
     def _playwright_get(self, url):
         try:
