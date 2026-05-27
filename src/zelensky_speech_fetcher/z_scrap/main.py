@@ -33,9 +33,9 @@ RSS_URLS = {
 
 
 class HttpFetcher:
-    """Fetches pages with curl_cffi; on bot-detection block falls back to Playwright."""
+    """Fetches pages with Playwright; curl_cffi is kept as an optional fallback path."""
 
-    def __init__(self, browser_first=False):
+    def __init__(self, browser_first=True):
         self._browser_first = browser_first
         self._session = requests.Session()
         self._pw = None
