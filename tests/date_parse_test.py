@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-from src.z_scrap.date_parse import parse
+from zelensky_speech_fetcher.z_scrap.date_parse import parse
 
 
 class MyTestCase(unittest.TestCase):

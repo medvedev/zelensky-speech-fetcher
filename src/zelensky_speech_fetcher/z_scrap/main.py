@@ -7,13 +7,17 @@ from email.utils import parsedate_to_datetime
 from curl_cffi import requests
 from lxml import html
 
-from dataset_updater import update_dataset
-from xpath_selectors import ARTICLE_CONTENT
-from debug_utils import (
+from .dataset_updater import update_dataset
+from .xpath_selectors import ARTICLE_CONTENT
+from .debug_utils import (
     save_debug_html, log_error, log_warning, log_group_start, log_group_end,
 )
 
 IMPERSONATE = "chrome131"
+
+
+class SpeechExtractionError(Exception):
+    pass
 
 _STEALTH_SCRIPT = """
     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -31,20 +35,30 @@ RSS_URLS = {
 class HttpFetcher:
     """Fetches pages with curl_cffi; on bot-detection block falls back to Playwright."""
 
-    def __init__(self):
+    def __init__(self, browser_first=False):
+        self._browser_first = browser_first
         self._session = requests.Session()
         self._pw = None
         self._pw_page = None
 
+    @staticmethod
+    def _is_bot_challenge(text):
+        return "Access Denied" in text[:500] or "sec-if-cpt-container" in text
+
     def get_html(self, url):
         """Returns (html_text, status_code)."""
+        if self._browser_first:
+            fallback = self._playwright_get(url)
+            if fallback and not self._is_bot_challenge(fallback):
+                return fallback, 200
+            return fallback or "", 0
         try:
             resp = self._session.get(url, impersonate=IMPERSONATE, timeout=20)
-            if resp.status_code == 200 and "Access Denied" not in resp.text[:500]:
+            if resp.status_code == 200 and not self._is_bot_challenge(resp.text):
                 return resp.text, 200
             print(f"curl_cffi: status={resp.status_code} size={len(resp.text)}b — falling back to Playwright")
             fallback = self._playwright_get(url)
-            if fallback and "Access Denied" not in fallback[:500]:
+            if fallback and not self._is_bot_challenge(fallback):
                 return fallback, 200
             return fallback or resp.text, resp.status_code
         except Exception as e:
@@ -57,7 +71,12 @@ class HttpFetcher:
             if self._pw_page is None:
                 self._init_playwright()
             self._pw_page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(4)  # allow Akamai JS challenge to complete
+            time.sleep(7)  # allow Akamai JS challenge to execute and trigger reload
+            # Akamai challenge calls location.reload(); wait for that navigation to land
+            try:
+                self._pw_page.wait_for_load_state("domcontentloaded", timeout=15000)
+            except Exception:
+                pass
             return self._pw_page.content()
         except Exception as e:
             log_warning(f"Playwright fetch failed for {url}: {e}")
@@ -118,12 +137,14 @@ def get_full_text(fetcher, speech_url):
         content = tree.xpath(ARTICLE_CONTENT)
         if content:
             return re.sub(r'\s+', ' ', content[0].text_content()).strip()
-        log_warning(f"article_content XPath matched 0 elements for {speech_url} (status={status}, size={len(page_text)})")
         save_debug_html(page_text, speech_url, "speech", "no_article_content")
-    except Exception:
-        traceback.print_exc()
-        print(f"\nError reading speech from URL {speech_url}")
-    return None
+        raise SpeechExtractionError(
+            f"article_content XPath matched 0 elements for {speech_url} (status={status}, size={len(page_text)})"
+        )
+    except SpeechExtractionError:
+        raise
+    except Exception as e:
+        raise SpeechExtractionError(f"Error reading speech from {speech_url}: {e}") from e
 
 
 def extract_data(rss_url, language="uk", force=False):
@@ -178,7 +199,11 @@ def extract_data(rss_url, language="uk", force=False):
             print(f"  speech {i}: {speech_topic[:60]!r}  date={speech_date}")
 
             if force or is_after_saved_timestamp(speech_date, language=language):
-                full_text = get_full_text(fetcher, speech_href)
+                try:
+                    full_text = get_full_text(fetcher, speech_href)
+                except SpeechExtractionError as e:
+                    log_warning(str(e))
+                    continue
                 speeches.append({
                     'date': speech_date,
                     'link': speech_href,
@@ -186,7 +211,7 @@ def extract_data(rss_url, language="uk", force=False):
                     'full_text': full_text,
                     'lang': language,
                 })
-                print(f"    → fetched ({len(full_text or '')} chars)")
+                print(f"    → fetched ({len(full_text)} chars)")
             else:
                 print(f"  No more new speeches (stopped at index {i})")
                 break
