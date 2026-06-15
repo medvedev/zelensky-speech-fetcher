@@ -1,3 +1,4 @@
+import os
 import time
 import traceback
 import re
@@ -25,7 +26,16 @@ _STEALTH_SCRIPT = """
     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
     Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
     Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
-    window.chrome = {runtime: {}};
+    Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+    Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+    Object.defineProperty(navigator, 'vendor', {get: () => 'Google Inc.'});
+    Object.defineProperty(navigator, 'maxTouchPoints', {get: () => 0});
+    window.chrome = {
+        app: {isInstalled: false},
+        runtime: {id: undefined},
+        loadTimes: function() {},
+        csi: function() {},
+    };
 """
 
 RSS_URLS = {
@@ -42,10 +52,11 @@ HTML_LISTING_URLS = {
 class HttpFetcher:
     """Fetches pages with Playwright first; falls back to curl_cffi on bot-block or failure."""
 
-    def __init__(self):
+    def __init__(self, browser_first=False):
         self._session = requests.Session()
         self._pw = None
         self._pw_page = None
+        self._browser_first = browser_first
 
     @staticmethod
     def _is_bot_challenge(text):
@@ -56,6 +67,10 @@ class HttpFetcher:
         pw_html = self._playwright_get(url)
         if pw_html and not self._is_bot_challenge(pw_html):
             return pw_html, 200
+
+        if self._browser_first:
+            # curl_cffi cannot solve JS challenges; skip it to avoid a wasted second request.
+            return pw_html or "", 0
 
         reason = "bot challenge detected" if pw_html else "fetch failed"
         print(f"Playwright {reason} for {url} — falling back to curl_cffi")
@@ -74,12 +89,23 @@ class HttpFetcher:
             if self._pw_page is None:
                 self._init_playwright()
             self._pw_page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(7)  # allow Akamai JS challenge to execute and trigger reload
-            # Akamai challenge calls location.reload(); wait for that navigation to land
-            try:
-                self._pw_page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception:
-                pass
+            # Poll for up to 30 s for the Akamai challenge to resolve.
+            # The challenge JS calls location.reload() when it passes, so we watch
+            # for sec-if-cpt-container to disappear rather than sleeping a fixed amount.
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                try:
+                    content = self._pw_page.content()
+                except Exception:
+                    # Page is mid-navigation (the reload just fired); wait for it to settle.
+                    try:
+                        self._pw_page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    except Exception:
+                        pass
+                    continue
+                if not self._is_bot_challenge(content):
+                    return content
+                time.sleep(2)
             return self._pw_page.content()
         except Exception as e:
             log_warning(f"Playwright fetch failed for {url}: {e}")
@@ -88,8 +114,9 @@ class HttpFetcher:
     def _init_playwright(self):
         from playwright.sync_api import sync_playwright
         self._pw = sync_playwright().start()
+        headless = os.environ.get("PLAYWRIGHT_HEADLESS", "true").lower() != "false"
         browser = self._pw.chromium.launch(
-            headless=True,
+            headless=headless,
             args=[
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -97,8 +124,15 @@ class HttpFetcher:
             ],
         )
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             locale="en-US",
+            timezone_id="America/New_York",
+            viewport={"width": 1920, "height": 1080},
+            extra_http_headers={
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Upgrade-Insecure-Requests": "1",
+            },
         )
         context.add_init_script(_STEALTH_SCRIPT)
         self._pw_page = context.new_page()
@@ -315,6 +349,7 @@ def extract_data(rss_url, language="uk", force=False):
 
         log_group_end()
 
+        speeches = []
         for i, item in enumerate(items):
             speech_date = parse_rss_date(item.findtext('pubDate'))
             speech_href = item.findtext('link')

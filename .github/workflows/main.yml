@@ -30,6 +30,12 @@ jobs:
           poetry install
           poetry run playwright install --with-deps chromium
 
+      - name: Start Xvfb (headful Playwright avoids Akamai headless detection)
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_HEADLESS=false" >> "$GITHUB_ENV"
+
       - name: Fetch and update speeches
         uses: nick-fields/retry@v3
         with:
