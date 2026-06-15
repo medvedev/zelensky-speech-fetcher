@@ -302,8 +302,10 @@ def extract_from_html_listing(fetcher, listing_url, language="uk", force=False):
     return latest_timestamp, speeches
 
 
-def extract_data(rss_url, language="uk", force=False):
-    fetcher = HttpFetcher()
+def extract_data(rss_url, language="uk", force=False, fetcher=None):
+    owns_fetcher = fetcher is None
+    if owns_fetcher:
+        fetcher = HttpFetcher()
     try:
         log_group_start(f"Processing {language} - {rss_url}")
         print(f"Fetching RSS: {rss_url}")
@@ -329,7 +331,17 @@ def extract_data(rss_url, language="uk", force=False):
             print(f"Falling back to HTML listing: {listing_url}")
             return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
 
-        items = root.find('channel').findall('item')
+        channel = root.find('channel')
+        if channel is None:
+            channel = root.find('.//channel')
+        if channel is None:
+            log_error(f"No channel element in RSS feed {rss_url}")
+            save_debug_html(rss_text, rss_url, language, "rss_no_channel")
+            log_group_end()
+            listing_url = to_listing_url(rss_url, language)
+            print(f"Falling back to HTML listing: {listing_url}")
+            return extract_from_html_listing(fetcher, listing_url, language=language, force=force)
+        items = channel.findall('item')
         print(f"RSS items: {len(items)}")
 
         if not items:
@@ -386,7 +398,8 @@ def extract_data(rss_url, language="uk", force=False):
         log_group_end()
         return None, []
     finally:
-        fetcher.close()
+        if owns_fetcher:
+            fetcher.close()
 
 
 def main():
@@ -399,25 +412,31 @@ def main():
     new_speeches = []
     errors_occurred = False
 
-    for language in languages:
-        rss_url = RSS_URLS[language]
-        print(f"Processing {language}: {rss_url}")
+    shared_fetcher = HttpFetcher()
+    try:
+        for language in languages:
+            rss_url = RSS_URLS[language]
+            print(f"Processing {language}: {rss_url}")
 
-        try:
-            timestamps[language], new_speeches_lang = extract_data(rss_url, language=language)
+            try:
+                timestamps[language], new_speeches_lang = extract_data(
+                    rss_url, language=language, fetcher=shared_fetcher
+                )
 
-            if timestamps[language] is None:
-                log_error(f"No timestamp returned for language {language}: skipping this language")
+                if timestamps[language] is None:
+                    log_error(f"No timestamp returned for language {language}: skipping this language")
+                    errors_occurred = True
+                else:
+                    new_speeches.extend(new_speeches_lang)
+                    print(f"Successfully processed {len(new_speeches_lang)} speeches for {language}")
+
+            except Exception as e:
+                log_error(f"Failed to process language {language}: {e}")
+                traceback.print_exc()
+                timestamps[language] = None
                 errors_occurred = True
-            else:
-                new_speeches.extend(new_speeches_lang)
-                print(f"Successfully processed {len(new_speeches_lang)} speeches for {language}")
-
-        except Exception as e:
-            log_error(f"Failed to process language {language}: {e}")
-            traceback.print_exc()
-            timestamps[language] = None
-            errors_occurred = True
+    finally:
+        shared_fetcher.close()
 
     successful_languages = [lang for lang in languages if timestamps.get(lang) is not None]
     if not successful_languages:
