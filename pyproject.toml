@@ -10,7 +10,7 @@ packages = [{ include = "zelensky_speech_fetcher", from = "src" }]
 python = ">=3.11,<4.0.0"
 requests = "^2.33.1"
 pandas = "^3.0.0"
-datasets = "^4.0.0"
+datasets = ">=4,<6"
 huggingface-hub = "^1.16.4"
 fsspec = ">=2023.1.0,<2027.0.0"
 curl-cffi = ">=0.7"
